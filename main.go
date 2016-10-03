@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"sync"
 )
+
+var wg sync.WaitGroup
 
 // Receive a list of URLs on STDIN, query them to determine
 // the HTTP status code. Log the URL and the associate HTTP
@@ -19,12 +22,15 @@ func main() {
 
 	for scanner.Scan() {
 		u := scanner.Text()
-		checkURL(u)
+		wg.Add(1)
+		go checkURL(u)
 	}
 
 	if err := scanner.Err(); err != nil {
 		fmt.Fprintln(os.Stderr, "reading standard input:", err)
 	}
+
+	wg.Wait()
 
 }
 
@@ -32,6 +38,9 @@ func main() {
 // status code. Note that this assumes the string represents
 // a valid URL.
 func checkURL(u string) {
+
+	defer wg.Done()
+
 	r, err := http.Get(u)
 	if err != nil {
 		fmt.Printf("%s,%s\n", u, err.Error())
