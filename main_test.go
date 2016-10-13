@@ -2,26 +2,41 @@ package main
 
 import (
 	"net/http"
+	"net/http/httptest"
 	"testing"
 )
 
 const checkMark = "\u2713"
 const ballotX = "\u2717"
 
+// mockServer returns a pointer to a server to handle the HTTP Get call
+func mockServer(c int) *httptest.Server {
+	f := func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(c)
+	}
+
+	return httptest.NewServer(http.HandlerFunc(f))
+}
+
 // TestUrlChecker validates that the urlChecker function can fetch a url
 // and return the HTTP status code
 func TestUrlChecker(t *testing.T) {
+
+	serverOk := mockServer(http.StatusOK)
+	serverNotFound := mockServer(http.StatusNotFound)
+	defer serverOk.Close()
+	defer serverNotFound.Close()
 
 	var urls = []struct {
 		url        string
 		statusCode int
 	}{
 		{
-			"http://www.billglover.me/",
+			serverOk.URL,
 			http.StatusOK,
 		},
 		{
-			"http://www.billglover.me/null",
+			serverNotFound.URL,
 			http.StatusNotFound,
 		},
 	}
@@ -47,4 +62,17 @@ func TestUrlChecker(t *testing.T) {
 
 		}
 	}
+}
+
+// BenchmarkCheckUrls provides performance numbers for the checkUrls function
+func BenchmarkCheckUrls(b *testing.B) {
+
+	s := mockServer(http.StatusOK)
+	defer s.Close()
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = getStatusCode(s.URL)
+	}
+
 }
