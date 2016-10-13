@@ -62,6 +62,7 @@ func urlChecker(c chan string, wg *sync.WaitGroup) {
 // Perform an HTTP GET on a URL and return the status code.
 func getStatusCode(u string) (int, error) {
 	r, err := http.Get(u)
+	defer r.Body.Close()
 
 	if err != nil {
 		fmt.Printf("%s, %s\n", u, err.Error())
