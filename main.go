@@ -10,14 +10,17 @@ import (
 
 const conc = 10 // concurrency factor
 
-// Receive a list of URLs on STDIN, query them to determine
-// the HTTP status code. Log the URL and the associate HTTP
-// status code to STDOUT. Note: no validation is done on
-// the URLs prior to making the request. The order of the
-// URLs in the output is not guaranteed to match that the
-// input.
 func main() {
+	checkUrls(bufio.NewScanner(os.Stdin))
+}
 
+// Scan through a bufio.Scanner for a list of URLs, and 
+// query them to determine the HTTP status code. Log the 
+// URL and the associate HTTP status code to STDOUT. 
+// Note: no validation is done on the URLs prior to 
+// making the request. The order of the URLs in the 
+// output is not guaranteed to match that the input.
+func checkUrls(s *bufio.Scanner) {
 	var wg sync.WaitGroup
 
 	c := make(chan string)
@@ -27,20 +30,18 @@ func main() {
 		go urlChecker(c, &wg)
 	}
 
-	scanner := bufio.NewScanner(os.Stdin)
-	for scanner.Scan() {
-		u := scanner.Text()
+	for s.Scan() {
+		u := s.Text()
 		c <- u
 	}
 
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintln(os.Stderr, "reading standard input:", err)
+	if err := s.Err(); err != nil {
+		fmt.Fprintln(os.Stderr, "reading input:", err)
 	}
 
 	close(c)
 
 	wg.Wait()
-
 }
 
 // Read URLs off a channel and perform an HTTP GET to determine the
@@ -53,13 +54,21 @@ func urlChecker(c chan string, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	for u := range c {
-		r, err := http.Get(u)
-
-		if err != nil {
-			fmt.Printf("%s, %s\n", u, err.Error())
-			continue
-		}
-
-		fmt.Printf("%s, %d\n", u, r.StatusCode)
+		c := getStatusCode(u)
+		fmt.Printf("%s, %d\n", u, c)
 	}
+}
+
+// Perform an HTTP GET on a URL and return the status code.
+// Note that this wraps errors and doesn't pass them up
+// the stack.
+func getStatusCode(u string) int {
+	r, err := http.Get(u)
+
+	if err != nil {
+		fmt.Printf("%s, %s\n", u, err.Error())
+		return 0
+	}
+
+	return r.StatusCode
 }
