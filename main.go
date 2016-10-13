@@ -54,21 +54,19 @@ func urlChecker(c chan string, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	for u := range c {
-		c := getStatusCode(u)
+		c, _ := getStatusCode(u)
 		fmt.Printf("%s, %d\n", u, c)
 	}
 }
 
 // Perform an HTTP GET on a URL and return the status code.
-// Note that this wraps errors and doesn't pass them up
-// the stack.
-func getStatusCode(u string) int {
+func getStatusCode(u string) (int, error) {
 	r, err := http.Get(u)
 
 	if err != nil {
 		fmt.Printf("%s, %s\n", u, err.Error())
-		return 0
+		return r.StatusCode, err
 	}
 
-	return r.StatusCode
+	return r.StatusCode, nil
 }
